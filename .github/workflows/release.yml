@@ -51,16 +51,16 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            binary: savebutton-daemon
+            ext: ""
           - os: macos-latest
             target: x86_64-apple-darwin
-            binary: savebutton-daemon
+            ext: ""
           - os: macos-latest
             target: aarch64-apple-darwin
-            binary: savebutton-daemon
+            ext: ""
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            binary: savebutton-daemon.exe
+            ext: ".exe"
     steps:
       - uses: actions/checkout@v4
 
@@ -72,11 +72,15 @@ jobs:
         working-directory: daemon
         run: cargo build --release --target ${{ matrix.target }}
 
+      - name: Rename binary with target triple
+        shell: bash
+        run: mv daemon/target/${{ matrix.target }}/release/savebutton-daemon${{ matrix.ext }} daemon/target/${{ matrix.target }}/release/savebutton-daemon-${{ matrix.target }}${{ matrix.ext }}
+
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
           name: daemon-${{ matrix.target }}
-          path: daemon/target/${{ matrix.target }}/release/${{ matrix.binary }}
+          path: daemon/target/${{ matrix.target }}/release/savebutton-daemon-${{ matrix.target }}${{ matrix.ext }}
 
   package-linux:
     name: Package Linux (${{ matrix.format }})
@@ -95,14 +99,14 @@ jobs:
           path: binary
 
       - name: Make binary executable
-        run: chmod +x binary/savebutton-daemon
+        run: chmod +x binary/savebutton-daemon-x86_64-unknown-linux-gnu
 
       - name: Install rpmbuild
         if: matrix.format == 'rpm'
         run: sudo apt-get install -y rpm
 
       - name: Build package
-        run: daemon/packaging/build-${{ matrix.format }}.sh binary/savebutton-daemon
+        run: daemon/packaging/build-${{ matrix.format }}.sh binary/savebutton-daemon-x86_64-unknown-linux-gnu
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
@@ -224,9 +228,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-
-      - name: Rename daemon binaries
-        run: .github/scripts/rename-daemon-binaries.sh artifacts
 
       - name: Create release
         uses: softprops/action-gh-release@v2
